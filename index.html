@@ -205,10 +205,39 @@ a{color:var(--accent);text-decoration:none}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
+/* ===== MOBILE PROP SWITCHER ===== */
+.mob-prop-bar{display:none;background:var(--card);border-bottom:1px solid var(--border);padding:8px 12px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;gap:7px;flex-shrink:0}
+.mob-prop-bar::-webkit-scrollbar{display:none}
+.mob-prop-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0}
+.mob-prop-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mob-prop-chip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+/* ===== MOBILE GANTT CARD ===== */
+.gantt-mobile{display:none}
+.gantt-mobile-row{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+.gantt-mobile-hdr{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border)}
+.gantt-mobile-name{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gantt-mobile-body{padding:9px 12px}
+.gantt-mobile-bar-wrap{height:10px;background:var(--bg3);border-radius:5px;overflow:hidden;margin:6px 0}
+.gantt-mobile-bar-fill{height:100%;border-radius:5px;transition:width .4s}
+.gantt-mobile-meta{font-size:11px;color:var(--text3);display:flex;justify-content:space-between}
 @media(max-width:768px){
   .sidebar{position:fixed;left:-248px;top:0;bottom:0;z-index:50;transition:left .2s}
   .sidebar.open{left:0;box-shadow:4px 0 20px rgba(0,0,0,.15)}
-  .metrics{grid-template-columns:repeat(2,1fr)}
+  .mob-prop-bar{display:flex}
+  .topbar{padding:8px 12px}
+  .tb-title{font-size:13px}
+  .tb-sub{font-size:10px}
+  .content{padding:12px 14px}
+  .tabs{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex-shrink:0;padding:8px 11px;font-size:12px}
+  .gantt-wrap{display:none}
+  .gantt-mobile{display:block}
+  .metrics{grid-template-columns:repeat(2,1fr);gap:8px}
+  .metric{padding:10px 12px}
+  .metric-val{font-size:19px}
+  .btn-group .btn-sm{padding:4px 8px;font-size:11px}
+  #sync-status{display:none}
 }
 </style>
 </head>
@@ -239,6 +268,8 @@ a{color:var(--accent);text-decoration:none}
 
 <!-- MAIN -->
 <div class="main">
+  <!-- モバイル用物件切替バー -->
+  <div class="mob-prop-bar" id="mob-prop-bar"></div>
   <div class="topbar">
     <div style="min-width:0">
       <div class="tb-title" id="tb-title">物件を選択してください</div>
@@ -1067,6 +1098,22 @@ function renderSidebar() {
   }
   document.getElementById('prop-list').innerHTML = h;
   document.getElementById('total-count').textContent = DB.length + ' 件';
+  // モバイル用物件切替チップを更新
+  const bar = document.getElementById('mob-prop-bar');
+  if (bar) {
+    let chips = '';
+    DB.forEach(p => {
+      const dotColor = dotCls(p);
+      const dotBg = {
+        'dot-g':'#2D9B5A','dot-a':'#E07B1A','dot-r':'#D94040','dot-gray':'#BBBAB5'
+      }[dotColor] || '#BBBAB5';
+      chips += `<div class="mob-prop-chip${selectedId===p.id?' active':''}" onclick="selectProp(${p.id})">
+        <span class="mob-prop-chip-dot" style="background:${selectedId===p.id?'rgba(255,255,255,.7)':dotBg}"></span>
+        ${p.name}
+      </div>`;
+    });
+    bar.innerHTML = chips;
+  }
 }
 
 function renderMain() {
@@ -1270,6 +1317,28 @@ function renderGantt(p) {
     h+=`</tr>`;
   });
   h+=`</tbody></table></div>`;
+  // モバイル用カード表示
+  h += `<div class="gantt-mobile">`;
+  p.processes.forEach(proc => {
+    const bc = barColor(proc.status);
+    h += `<div class="gantt-mobile-row">
+      <div class="gantt-mobile-hdr">
+        <div class="gantt-mobile-name">${proc.name}</div>
+        <span class="pill ${pillCls(proc.status)}">${statusLbl(proc.status)}</span>
+      </div>
+      <div class="gantt-mobile-body">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${proc.contractor}</div>
+        <div class="gantt-mobile-bar-wrap">
+          <div class="gantt-mobile-bar-fill" style="width:${proc.progress}%;background:${bc}"></div>
+        </div>
+        <div class="gantt-mobile-meta">
+          <span>${fmtDate(proc.start)} 〜 ${fmtDate(proc.end)}</span>
+          <span style="font-weight:500;color:${bc}">${proc.progress}%</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  h += `</div>`;
   h+=`<div style="display:flex;gap:14px;flex-wrap:wrap;padding:6px 2px;font-size:11px;color:var(--text2)">
     <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#2D9B5A;margin-right:4px"></span>完了</span>
     <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#1A6EB5;margin-right:4px"></span>進行中</span>
