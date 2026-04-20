@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リノベ工程管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Google API -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F4F2ED;--bg2:#ECEAE3;--bg3:#E2DED5;--card:#FAFAF7;
+  --border:rgba(50,40,20,0.11);--border2:rgba(50,40,20,0.2);
+  --text:#1A1710;--text2:#6A6255;--text3:#9E9588;
+  --accent:#2D5A3D;--accent-lt:#EAF2EC;
+  --blue:#1A4A7A;--blue-lt:#E8F0F8;
+  --amber:#8B5E0A;--amber-lt:#FDF3E0;
+  --red:#8B1A1A;--red-lt:#FAEAEA;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.65;min-height:100vh}
+button,input,select,textarea{font-family:inherit}
+button{cursor:pointer}
+a{color:var(--accent);text-decoration:none}
+
+/* Layout */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:248px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+
+/* Sidebar */
+.sb-logo{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.sb-logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sb-logo-text{font-size:13px;font-weight:600;color:var(--text);letter-spacing:-.02em;line-height:1.3}
+.sb-logo-sub{font-size:10px;color:var(--text3)}
+.sb-section{padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.sb-item{padding:8px 14px;display:flex;align-items:center;gap:9px;cursor:pointer;border-left:3px solid transparent;transition:all .12s;border-radius:0 6px 6px 0;margin:1px 6px 1px 0}
+.sb-item:hover{background:var(--bg)}
+.sb-item.active{background:var(--bg);border-left-color:var(--accent)}
+.sb-item-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-g{background:#2D9B5A}.dot-a{background:#E07B1A}.dot-r{background:#D94040}.dot-gray{background:#BBBAB5}
+.sb-item-info{flex:1;min-width:0}
+.sb-item-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item-meta{font-size:10px;color:var(--text3)}
+.sb-footer{padding:12px 14px;border-top:1px solid var(--border);margin-top:auto}
+.sb-footer-stat{font-size:10px;color:var(--text3)}
+.sb-footer-val{font-size:18px;font-weight:500;color:var(--text);line-height:1.2}
+
+/* Google auth bar */
+.auth-bar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--bg)}
+.auth-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600;flex-shrink:0}
+.auth-name{font-size:11px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auth-btn{font-size:10px;padding:3px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--card);color:var(--text2);cursor:pointer}
+.auth-btn:hover{background:var(--bg2)}
+
+/* Topbar */
+.tb-title{font-size:15px;font-weight:500}
+.tb-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.btn{padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;border:1px solid var(--border2);background:var(--card);color:var(--text);transition:all .13s;white-space:nowrap}
+.btn:hover{background:var(--bg2)}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-accent:hover{background:#245030}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-group{display:flex;gap:7px;align-items:center;flex-shrink:0}
+.btn-google{background:#fff;border:1px solid #DADCE0;color:#3C4043;display:flex;align-items:center;gap:6px}
+.btn-google:hover{background:#F8F9FA}
+.btn-google svg{width:16px;height:16px;flex-shrink:0}
+
+/* Setup banner */
+.setup-banner{background:linear-gradient(135deg,var(--accent) 0%,#1A3D2A 100%);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:20px;color:#fff;display:flex;align-items:flex-start;gap:16px}
+.setup-banner-icon{font-size:28px;line-height:1;flex-shrink:0;margin-top:2px}
+.setup-banner h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.setup-banner p{font-size:12px;opacity:.85;line-height:1.7}
+.setup-banner a{color:#A8D8B8;text-decoration:underline}
+.setup-steps{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.setup-step{font-size:12px;opacity:.9;display:flex;align-items:flex-start;gap:8px}
+.setup-step-num{background:rgba(255,255,255,.2);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:1px}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:8px 16px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:500}
+.tab:hover{color:var(--text)}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:18px}
+.metric{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:13px 15px}
+.metric-lbl{font-size:11px;color:var(--text3);margin-bottom:3px}
+.metric-val{font-size:23px;font-weight:500;line-height:1.15}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:3px}
+.pbar{height:4px;background:var(--bg3);border-radius:2px;margin-top:7px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:2px;transition:width .5s}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:15px 17px;margin-bottom:13px}
+.card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:500;color:var(--text)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.pill-done{background:var(--accent-lt);color:var(--accent)}
+.pill-progress{background:var(--blue-lt);color:var(--blue)}
+.pill-waiting{background:var(--amber-lt);color:var(--amber)}
+.pill-issue{background:var(--red-lt);color:var(--red)}
+
+/* Table */
+.tbl-wrap{border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden;margin-bottom:13px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:9px 12px;font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);background:var(--bg);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--bg)}
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;min-width:60px}
+.bar-fg{height:100%;border-radius:3px;transition:width .4s}
+.bar-lbl{font-size:10px;color:var(--text3);min-width:26px;text-align:right;font-family:'DM Mono',monospace}
+
+/* ===== FILE ATTACHMENT ===== */
+.file-section{margin-top:10px}
+.file-section-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.file-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.file-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);font-size:12px}
+.file-icon{font-size:16px;flex-shrink:0;line-height:1}
+.file-name{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-meta{font-size:10px;color:var(--text3);flex-shrink:0}
+.file-actions{display:flex;gap:4px;flex-shrink:0}
+.file-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600}
+.file-tag-quote{background:#EEF4FF;color:#2B5BD6}
+.file-tag-invoice{background:#FFF4EE;color:#C05A00}
+.file-upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--card)}
+.file-upload-zone:hover,.file-upload-zone.drag{border-color:var(--accent);background:var(--accent-lt)}
+.file-upload-zone input{display:none}
+.file-upload-label{font-size:12px;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.file-upload-icon{font-size:22px;opacity:.5}
+.uploading-bar{height:3px;background:var(--accent-lt);border-radius:2px;overflow:hidden;margin-top:6px}
+.uploading-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+
+/* Gantt */
+.gantt-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:13px}
+.gantt-table{border-collapse:collapse;font-size:11px;white-space:nowrap}
+.gantt-table th,.gantt-table td{border:1px solid var(--border)}
+.gantt-fix-th{padding:8px 12px;background:var(--bg);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;position:sticky;left:0;z-index:2}
+.gantt-fix-td{padding:9px 12px;background:var(--card);font-size:12px;color:var(--text);position:sticky;left:0;z-index:2;min-width:130px}
+.gantt-fix-td.name-cell{font-weight:500}
+.gantt-day-th{width:22px;min-width:22px;max-width:22px;text-align:center;font-size:9px;color:var(--text3);padding:5px 0;background:var(--bg)}
+.gantt-day-th.weekend{background:var(--bg3)}
+.gantt-day-th.month-start{border-left:2px solid var(--border2)}
+.gantt-day-th.today-col{background:#FFEEEE;color:var(--red);font-weight:700}
+.gantt-month-th{text-align:center;font-size:10px;font-weight:600;color:#fff;padding:5px 0;background:var(--accent)}
+.gantt-cell{width:22px;min-width:22px;max-width:22px;height:32px;padding:0}
+.gantt-cell.weekend{background:var(--bg3)}
+.gantt-cell.month-start{border-left:2px solid var(--border2)}
+.gantt-cell.today-col{border-left:2px solid var(--red)!important}
+.gantt-bar{height:14px;border-radius:3px;margin:9px 1px}
+.gantt-row:hover .gantt-fix-td,.gantt-row:hover .gantt-cell{background:rgba(45,90,61,.04)}
+
+/* Budget */
+.budget-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.budget-row:last-child{border-bottom:none}
+.budget-cat{color:var(--text2)}
+.budget-amt{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+
+/* Memo */
+.memo-item{border-left:3px solid var(--border2);padding:10px 13px;margin-bottom:9px;border-radius:0 var(--radius) var(--radius) 0;background:var(--bg)}
+.memo-item.issue{border-left-color:var(--red);background:var(--red-lt)}
+.memo-meta{font-size:10px;color:var(--text3);margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.memo-text{font-size:13px;color:var(--text);line-height:1.6}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(26,23,16,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
+.modal{background:var(--card);border-radius:var(--radius-lg);width:100%;max-width:520px;padding:22px;box-shadow:0 12px 48px rgba(26,23,16,.18);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:500;margin-bottom:16px}
+.form-row{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block}
+.form-input{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none;transition:border-color .13s}
+.form-input:focus{border-color:var(--accent)}
+.form-select{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* Google Setup Modal */
+.gsetup-step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+.gsetup-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.gsetup-body{flex:1}
+.gsetup-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.gsetup-desc{font-size:12px;color:var(--text2);line-height:1.6}
+.gsetup-desc a{color:var(--accent);text-decoration:underline}
+.code-block{background:#1A1710;color:#A8D8B8;font-family:'DM Mono',monospace;font-size:11px;padding:10px 12px;border-radius:var(--radius);margin-top:6px;word-break:break-all;line-height:1.6}
+
+/* Notif */
+.notif{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:9px 18px;border-radius:var(--radius);font-size:12px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.notif.show{opacity:1}
+
+/* Empty */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:240px;color:var(--text3);gap:10px}
+.empty-icon{font-size:36px;opacity:.4}
+.empty-text{font-size:13px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+@media(max-width:768px){
+  .sidebar{position:fixed;left:-248px;top:0;bottom:0;z-index:50;transition:left .2s}
+  .sidebar.open{left:0;box-shadow:4px 0 20px rgba(0,0,0,.15)}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">🏗</div>
+    <div>
+      <div class="sb-logo-text">リノベ工程管理</div>
+      <div class="sb-logo-sub">Powered by Google Drive</div>
+    </div>
+  </div>
+  <!-- Auth status -->
+  <div class="auth-bar" id="auth-bar">
+    <div class="auth-avatar" id="auth-avatar">?</div>
+    <div class="auth-name" id="auth-name">未ログイン</div>
+    <button class="auth-btn" id="auth-btn" onclick="handleAuthBtn()">ログイン</button>
+  </div>
+  <div id="prop-list"></div>
+  <div class="sb-footer">
+    <div class="sb-footer-stat">管理中の物件</div>
+    <div class="sb-footer-val" id="total-count">0 件</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="min-width:0">
+      <div class="tb-title" id="tb-title">物件を選択してください</div>
+      <div class="tb-sub" id="tb-sub"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <span id="sync-status" style="font-size:11px;color:var(--text3);white-space:nowrap"></span>
+      <button class="btn btn-sm" id="btn-reload-drive" onclick="loadFromDrive()" title="Driveから最新データを再読み込み" style="display:none">🔄 再読込</button>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-sm" onclick="openAddProp()">＋ 物件追加</button>
+      <button class="btn btn-sm" onclick="showGSetup()" title="Google Drive設定">⚙ Drive設定</button>
+    </div>
+  </div>
+  <div class="content" id="main-content">
+    <div class="setup-banner">
+      <div class="setup-banner-icon">📁</div>
+      <div style="flex:1">
+        <h3>Google Drive連携でデータをチーム全員と共有</h3>
+        <p>Googleアカウントでログインすると、工程・予算・物品などのすべてのデータがGoogleドライブに自動保存されます。<br>チームメンバー全員がどの端末からでも同じデータにアクセスできます。</p>
+        <div class="setup-steps">
+          <div class="setup-step"><div class="setup-step-num">1</div><span>「Drive設定」ボタンから Google Cloud のクライアントIDを設定</span></div>
+          <div class="setup-step"><div class="setup-step-num">2</div><span>サイドバーの「ログイン」でGoogleアカウントにサインイン</span></div>
+          <div class="setup-step"><div class="setup-step-num">3</div><span>工程管理タブ → 各工程の「書類」ボタンからPDFを添付</span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="showGSetup()">⚙ Drive設定を開く</button>
+          <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="useLocalMode()">💾 まずローカルで試す</button>
+        </div>
+      </div>
+    </div>
+    <div class="empty"><div class="empty-icon">🏠</div><div class="empty-text">左サイドバーから物件を選択してください</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- 物件追加 -->
+<div class="overlay" id="modal-prop" style="display:none">
+<div class="modal">
+  <div class="modal-title">物件を追加</div>
+  <div class="form-row"><label class="form-label">物件名 *</label><input class="form-input" id="f-name" placeholder="例：渋谷区恵比寿 2LDK"></div>
+  <div class="form-row"><label class="form-label">物件住所</label><input class="form-input" id="f-addr" placeholder="渋谷区恵比寿1-2-3"></div>
+  <div class="form-grid">
+    <div class="form-row"><label class="form-label">工期開始</label><input class="form-input" id="f-start" type="date"></div>
+    <div class="form-row"><label class="form-label">工期終了</label><input class="form-input" id="f-end" type="date"></div>
+  </div>
+  <div class="form-row"><label class="form-label">総予算（円）</label><input class="form-input" id="f-budget" type="number" placeholder="4000000"></div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-prop')">キャンセル</button>
+    <button class="btn btn-accent" onclick="addProperty()">追加する</button>
+  </div>
+</div>
+</div>
+
+<!-- 工程追加・編集 -->
+<div class="overlay" id="modal-proc" style="display:none">
+<div class="modal">
+  <div class="modal-title" id="proc-modal-title">工程を追加</div>
+  <div class="form-row"><label class="form-label">工程名 *</label><input class="form-input" id="pf-name" placeholder="例：電気・配管工事"></div>
+  <div class="form-row"><label class="form-label">担当業者</label><input class="form-input" id="pf-cont" placeholder="例：東京電設"></div>
+  <div class="form-grid">
+    <div class="form-row"><label class="form-label">開始予定日</label><input class="form-input" id="pf-start" type="date"></div>
+    <div class="form-row"><label class="form-label">完了予定日</label><input class="form-input" id="pf-end" type="date"></div>
+  </div>
+  <div class="form-grid">
+    <div class="form-row"><label class="form-label">進捗（%）</label><input class="form-input" id="pf-prog" type="number" min="0" max="100" placeholder="0"></div>
+    <div class="form-row"><label class="form-label">ステータス</label>
+      <select class="form-select" id="pf-status">
+        <option value="waiting">待機中</option><option value="progress">進行中</option>
+        <option value="done">完了</option><option value="issue">遅延</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="form-row"><label class="form-label">見積金額（円）</label><input class="form-input" id="pf-budget" type="number" placeholder="500000"></div>
+    <div class="form-row"><label class="form-label">実績金額（円）</label><input class="form-input" id="pf-actual" type="number" placeholder="0"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-proc')">キャンセル</button>
+    <button class="btn btn-accent" onclick="saveProcess()">保存</button>
+  </div>
+</div>
+</div>
+
+<!-- メモ追加 -->
+<div class="overlay" id="modal-memo" style="display:none">
+<div class="modal">
+  <div class="modal-title">メモを追加</div>
+  <div class="form-row"><label class="form-label">種類</label>
+    <select class="form-select" id="mf-type"><option value="normal">通常メモ</option><option value="issue">問題・遅延</option></select>
+  </div>
+  <div class="form-row"><label class="form-label">内容 *</label><textarea class="form-input" id="mf-text" rows="4" placeholder="現場の状況を入力..."></textarea></div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-memo')">キャンセル</button>
+    <button class="btn btn-accent" onclick="addMemo()">追加</button>
+  </div>
+</div>
+</div>
+
+<!-- ファイル添付モーダル -->
+<div class="overlay" id="modal-files" style="display:none">
+<div class="modal" style="max-width:560px">
+  <div class="modal-title" id="files-modal-title">書類を管理</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:14px" id="files-modal-sub"></div>
+
+  <!-- 添付済みファイル一覧 -->
+  <div id="file-list-container"></div>
+
+  <!-- アップロードゾーン -->
+  <div id="upload-area">
+    <div class="file-section-title">PDFを追加</div>
+    <div style="margin-bottom:10px">
+      <label class="form-label">書類の種類</label>
+      <select class="form-select" id="file-type-select">
+        <option value="quote">見積書</option>
+        <option value="invoice">請求書</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+
+    <!-- Drive未接続時 -->
+    <div id="upload-no-auth" style="display:none">
+      <div style="background:var(--amber-lt);border:1px solid rgba(139,94,10,.2);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--amber);margin-bottom:10px">
+        ⚠ GoogleドライブにアップロードするにはGoogleアカウントへのログインが必要です。<br>
+        <span style="color:var(--text2)">ローカルモードでは、ファイルリンクのみ登録できます。</span>
+      </div>
+      <div class="form-row"><label class="form-label">Googleドライブのファイルリンク（代替）</label>
+        <input class="form-input" id="manual-link" placeholder="https://drive.google.com/file/d/xxx/view">
+      </div>
+      <div style="background:var(--accent-lt);border-radius:var(--radius);padding:8px 10px;font-size:11px;color:var(--accent);margin-bottom:8px">
+        ファイル名は自動生成されます：<br>
+        <span style="font-family:'DM Mono',monospace;font-size:10px">案件名_会社名_工程名_金額_書類種別.pdf</span>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="addManualLink()">リンクを登録</button>
+    </div>
+
+    <!-- Drive接続時 -->
+    <div id="upload-auth" style="display:none">
+      <div class="file-upload-zone" id="upload-zone"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <label class="file-upload-label">
+          <span class="file-upload-icon">📄</span>
+          <span>クリックまたはドラッグ＆ドロップでPDFを選択</span>
+          <span style="font-size:10px;color:var(--text3)">PDFファイルのみ（最大20MB）</span>
+          <input type="file" id="file-input" accept=".pdf,application/pdf" onchange="handleFileSelect(event)">
+        </label>
+      </div>
+      <div id="upload-progress" style="display:none;margin-top:8px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px" id="upload-status">アップロード中...</div>
+        <div class="uploading-bar"><div class="uploading-fill" id="upload-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-files')">閉じる</button>
+  </div>
+</div>
+</div>
+
+<!-- Google Drive 設定モーダル -->
+<div class="overlay" id="modal-gsetup" style="display:none">
+<div class="modal" style="max-width:600px">
+  <div class="modal-title">⚙ Google Drive 連携設定</div>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7">
+    Google Cloud ConsoleでOAuth クライアントIDを取得して設定します。一度だけの作業です。
+  </p>
+
+  <div class="gsetup-step">
+    <div class="gsetup-num">1</div>
+    <div class="gsetup-body">
+      <div class="gsetup-title">Google Cloud プロジェクトを作成</div>
+      <div class="gsetup-desc"><a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> を開き、新しいプロジェクトを作成してください。</div>
+    </div>
+  </div>
+
+  <div class="gsetup-step">
+    <div class="gsetup-num">2</div>
+    <div class="gsetup-body">
+      <div class="gsetup-title">Google Drive API を有効化</div>
+      <div class="gsetup-desc">「APIとサービス」→「ライブラリ」→「Google Drive API」を検索して有効にします。</div>
+    </div>
+  </div>
+
+  <div class="gsetup-step">
+    <div class="gsetup-num">3</div>
+    <div class="gsetup-body">
+      <div class="gsetup-title">OAuth 同意画面を設定</div>
+      <div class="gsetup-desc">「APIとサービス」→「OAuth同意画面」→「外部」を選択し、アプリ名などを入力して保存。スコープに <code style="background:var(--bg2);padding:1px 4px;border-radius:3px">drive.file</code> を追加してください。</div>
+    </div>
+  </div>
+
+  <div class="gsetup-step">
+    <div class="gsetup-num">4</div>
+    <div class="gsetup-body">
+      <div class="gsetup-title">クライアントID を取得</div>
+      <div class="gsetup-desc">「認証情報」→「認証情報を作成」→「OAuth クライアントID」→「ウェブアプリケーション」を選択。<br>
+      承認済みの JavaScript 生成元に、このファイルを開いているURLを追加します。<br>
+      例：<code style="background:var(--bg2);padding:1px 4px;border-radius:3px">http://localhost:5500</code> または <code style="background:var(--bg2);padding:1px 4px;border-radius:3px">https://あなたのドメイン.com</code></div>
+    </div>
+  </div>
+
+  <div class="gsetup-step">
+    <div class="gsetup-num">5</div>
+    <div class="gsetup-body">
+      <div class="gsetup-title">クライアントIDをここに貼り付け</div>
+      <input class="form-input" id="client-id-input" placeholder="xxxxx.apps.googleusercontent.com" style="margin-top:6px">
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px">
+    <div class="gsetup-step" style="margin-bottom:0">
+      <div class="gsetup-num">6</div>
+      <div class="gsetup-body">
+        <div class="gsetup-title">保存フォルダ名（Googleドライブ内）</div>
+        <input class="form-input" id="folder-name-input" placeholder="リノベ工程管理_書類" style="margin-top:6px">
+        <div class="gsetup-desc" style="margin-top:4px">このフォルダが自動作成され、書類はここに保存されます。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal('modal-gsetup')">キャンセル</button>
+    <button class="btn btn-accent" onclick="saveGSetup()">保存してログイン</button>
+  </div>
+</div>
+</div>
+
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ============================================================
+// CONFIG & STATE
+// ============================================================
+let CLIENT_ID     = localStorage.getItem('reno_client_id') || '';
+let FOLDER_NAME   = localStorage.getItem('reno_folder_name') || 'リノベ工程管理_書類';
+let DRIVE_FOLDER_ID = localStorage.getItem('reno_folder_id') || '';
+let tokenClient   = null;
+let accessToken   = null;
+let currentUser   = null;
+let uploadingProcId = null;
+
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const DATA_FILE_NAME = 'reno_data_v3.json'; // Drive上のデータファイル名
+let DRIVE_DATA_FILE_ID = localStorage.getItem('reno_data_file_id') || ''; // データJSONのファイルID
+let isSyncing = false; // 二重保存防止フラグ
+
+// ============================================================
+// DATA
+// ============================================================
+let DB = JSON.parse(localStorage.getItem('reno_data_v3') || 'null') || [
+  {
+    id:1, name:'渋谷区恵比寿 2LDK', addr:'渋谷区恵比寿1-2-3',
+
+    startDate:'2026-02-10', endDate:'2026-05-02',
+    budget:4000000, status:'progress',
+    processes:[
+      {id:1,name:'解体・撤去',contractor:'山田工業',start:'2026-02-10',end:'2026-02-20',progress:100,status:'done',budget:380000,actual:375000,files:[]},
+      {id:2,name:'躯体・構造補強',contractor:'丸山建設',start:'2026-02-21',end:'2026-03-05',progress:100,status:'done',budget:420000,actual:420000,files:[
+        {id:'demo1',name:'見積書_丸山建設.pdf',type:'quote',driveId:'',driveUrl:'',size:'245KB',uploadedAt:'2026/02/15',uploadedBy:'鈴木 健太'}
+      ]},
+      {id:3,name:'電気・配管工事',contractor:'東京電設',start:'2026-03-06',end:'2026-03-25',progress:90,status:'progress',budget:720000,actual:0,files:[
+        {id:'demo2',name:'見積書_東京電設_電気配管.pdf',type:'quote',driveId:'',driveUrl:'',size:'312KB',uploadedAt:'2026/03/01',uploadedBy:'鈴木 健太'},
+        {id:'demo3',name:'請求書_東京電設_第1回.pdf',type:'invoice',driveId:'',driveUrl:'',size:'198KB',uploadedAt:'2026/03/20',uploadedBy:'山田 智子'},
+      ]},
+      {id:4,name:'断熱・防音工事',contractor:'快適住環境',start:'2026-03-20',end:'2026-04-05',progress:75,status:'progress',budget:410000,actual:0,files:[]},
+      {id:5,name:'内装（壁・床）',contractor:'インテリア佐藤',start:'2026-04-01',end:'2026-04-20',progress:40,status:'issue',budget:580000,actual:0,files:[]},
+      {id:6,name:'キッチン・バス',contractor:'水廻り工房',start:'2026-04-15',end:'2026-04-25',progress:10,status:'waiting',budget:890000,actual:0,files:[]},
+      {id:7,name:'塗装・クリーニング',contractor:'ピカピカ清掃',start:'2026-04-26',end:'2026-05-02',progress:0,status:'waiting',budget:200000,actual:0,files:[]},
+    ],
+    memos:[
+      {id:1,date:'2026/04/10',author:'鈴木 健太',type:'issue',text:'内装工事で壁の一部にシロアリ被害を発見。追加補修が必要。'},
+      {id:2,date:'2026/03/25',author:'鈴木 健太',type:'normal',text:'電気工事ほぼ完了。配管も問題なし。'},
+    ],
+    items:[
+      {id:1,name:'ソファ（3人掛け）',category:'家具',unitPrice:115000,shipping:3000,qty:1,spec:'グレー / Wサイズ',url:'',note:'要搬入確認',actual:118000},
+      {id:2,name:'ダイニングテーブル＋チェア4脚セット',category:'家具',unitPrice:82000,shipping:3000,qty:1,spec:'ウォールナット / W160cm',url:'',note:'',actual:0},
+      {id:3,name:'冷蔵庫（500L）',category:'家電',unitPrice:92000,shipping:3000,qty:1,spec:'ステンレス / 観音開き',url:'',note:'設置スペース要確認',actual:98000},
+      {id:4,name:'洗濯乾燥機',category:'家電',unitPrice:128000,shipping:2000,qty:1,spec:'ドラム式 / 左開き',url:'',note:'',actual:0},
+      {id:5,name:'カーテン（LDK）',category:'カーテン・ラグ',unitPrice:14000,shipping:500,qty:3,spec:'アイボリー / 遮光1級',url:'',note:'採寸済み',actual:14500},
+    ],
+  },
+  {
+    id:2, name:'新宿区荒木町 1K', addr:'新宿区荒木町4-5',
+
+    startDate:'2026-03-01', endDate:'2026-05-20',
+    budget:1800000, status:'issue',
+    processes:[
+      {id:1,name:'解体・撤去',contractor:'山田工業',start:'2026-03-01',end:'2026-03-10',progress:100,status:'done',budget:150000,actual:148000,files:[]},
+      {id:2,name:'電気・配管工事',contractor:'東都電設',start:'2026-03-11',end:'2026-03-28',progress:60,status:'issue',budget:380000,actual:0,files:[]},
+      {id:3,name:'内装工事',contractor:'センス空間',start:'2026-03-25',end:'2026-04-20',progress:20,status:'progress',budget:620000,actual:0,files:[]},
+      {id:4,name:'クリーニング',contractor:'ピカピカ清掃',start:'2026-04-21',end:'2026-04-25',progress:0,status:'waiting',budget:80000,actual:0,files:[]},
+    ],
+    memos:[{id:1,date:'2026/04/05',author:'山田 智子',type:'issue',text:'資材納期が1週間遅れる見込み。'}],
+    items:[
+      {id:1,name:'ベッドフレーム（シングル）',category:'家具',unitPrice:43000,shipping:2000,qty:1,spec:'ホワイト / SD',url:'',note:'',actual:0},
+      {id:2,name:'エアコン（6畳用）',category:'家電',unitPrice:78000,shipping:2000,qty:1,spec:'白 / 標準工事込み',url:'',note:'',actual:82000},
+    ],
+  },
+];
+
+let selectedId   = null;
+let activeTab    = 'overview';
+let editProcId   = null;
+let filesProcId  = null;
+
+// ============================================================
+// PERSIST
+// ============================================================
+function saveLocal() {
+  localStorage.setItem('reno_data_v3', JSON.stringify(DB));
+  // Driveにも非同期で保存（ログイン済みの場合）
+  if (accessToken) saveToDrive();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getProp(id) { return DB.find(p => p.id === (id ?? selectedId)); }
+function calcProg(p) {
+  if (!p.processes.length) return 0;
+  return Math.round(p.processes.reduce((s,x) => s + x.progress, 0) / p.processes.length);
+}
+function calcDays(d) { return Math.ceil((new Date(d) - new Date()) / 86400000); }
+function calcBudget(p) { return p.processes.reduce((s,x) => s + x.budget, 0); }
+function calcActual(p) { return p.processes.reduce((s,x) => s + (x.actual||0), 0); }
+function nextId(arr) { return arr.length ? Math.max(...arr.map(x=>x.id)) + 1 : 1; }
+function pillCls(s) { return {done:'pill-done',progress:'pill-progress',waiting:'pill-waiting',issue:'pill-issue'}[s]||''; }
+function statusLbl(s) { return {done:'完了',progress:'進行中',waiting:'待機中',issue:'遅延'}[s]||s; }
+function barColor(s) { return {done:'#2D9B5A',progress:'#1A6EB5',issue:'#D94040',waiting:'#B0AB9F'}[s]||'#B0AB9F'; }
+function fmtDate(d) { return d ? d.replace(/-/g,'/') : '—'; }
+function fmtYen(n) { return (n === null || n === undefined || n === '') ? '—' : '¥'+Number(n).toLocaleString(); }
+function dotCls(p) {
+  if (p.status==='done') return 'dot-gray';
+  if (p.processes.some(x=>x.status==='issue')) return 'dot-r';
+  if (calcDays(p.endDate)<20 && calcProg(p)<70) return 'dot-a';
+  return 'dot-g';
+}
+function fileTagCls(type) {
+  return {quote:'file-tag-quote',invoice:'file-tag-invoice'}[type]||'';
+}
+function fileTagLbl(type) {
+  return {quote:'見積書',invoice:'請求書',other:'その他'}[type]||type;
+}
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg; n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'), 2400);
+}
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+
+// ============================================================
+// GOOGLE AUTH
+// ============================================================
+function initGoogleAuth() {
+  if (!CLIENT_ID) return;
+  try {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: onTokenReceived,
+    });
+  } catch(e) { console.warn('Google auth init failed:', e); }
+}
+
+function onTokenReceived(resp) {
+  if (resp.error) { showNotif('ログインに失敗しました'); return; }
+  accessToken = resp.access_token;
+  fetchUserInfo();
+}
+
+async function fetchUserInfo() {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const u = await r.json();
+    currentUser = u;
+    updateAuthBar(u);
+    showNotif(`${u.name} としてログインしました`);
+    // フォルダ確保 → Driveからデータ読み込み
+    await ensureDriveFolder();
+    await loadFromDrive();
+  } catch(e) { console.warn('fetchUserInfo error', e); }
+}
+
+function updateAuthBar(u) {
+  document.getElementById('auth-avatar').textContent = u.name?.[0] || 'U';
+  document.getElementById('auth-name').textContent = u.name || u.email || 'ログイン済み';
+  document.getElementById('auth-btn').textContent = 'ログアウト';
+  const reloadBtn = document.getElementById('btn-reload-drive');
+  if (reloadBtn) reloadBtn.style.display = '';
+}
+
+
+function handleAuthBtn() {
+  if (accessToken) {
+    accessToken = null; currentUser = null;
+    document.getElementById('auth-avatar').textContent = '?';
+    document.getElementById('auth-name').textContent = '未ログイン';
+    document.getElementById('auth-btn').textContent = 'ログイン';
+    const reloadBtn = document.getElementById('btn-reload-drive');
+    if (reloadBtn) reloadBtn.style.display = 'none';
+    const syncEl = document.getElementById('sync-status');
+    if (syncEl) syncEl.textContent = '';
+    showNotif('ログアウトしました');
+  } else {
+    if (!CLIENT_ID) { showGSetup(); return; }
+    tokenClient.requestAccessToken();
+  }
+}
+
+// ============================================================
+// GOOGLE DRIVE
+// ============================================================
+async function ensureDriveFolder() {
+  if (DRIVE_FOLDER_ID) return DRIVE_FOLDER_ID;
+  try {
+    // Search existing folder
+    const search = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${FOLDER_NAME}'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const sd = await search.json();
+    if (sd.files && sd.files.length > 0) {
+      DRIVE_FOLDER_ID = sd.files[0].id;
+    } else {
+      // Create folder
+      const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+      });
+      const cd = await cr.json();
+      DRIVE_FOLDER_ID = cd.id;
+    }
+    localStorage.setItem('reno_folder_id', DRIVE_FOLDER_ID);
+    return DRIVE_FOLDER_ID;
+  } catch(e) { console.warn('Folder ensure failed', e); }
+}
+
+function generateFileName(propName, companyName, procName, amount, fileType) {
+  const typeLabel = {quote:'見積書', invoice:'請求書', other:'書類'}[fileType] || '書類';
+  const amtPart = amount && amount > 0 ? '_¥' + Number(amount).toLocaleString() : '';
+  const clean = s => s.replace(/[\\\/:*?"<>|]/g, '').trim();
+  return clean(propName) + '_' + clean(companyName) + '_' + clean(procName) + amtPart + '_' + typeLabel + '.pdf';
+}
+
+async function uploadToDrive(file, propName, procName, companyName, amount, fileType) {
+  const folderId = await ensureDriveFolder();
+  const fileName = generateFileName(propName, companyName, procName, amount, fileType);
+
+  // Progress simulation + actual upload
+  showUploadProgress(true);
+  setUploadProgress(20);
+
+  const metadata = { name: fileName, parents: folderId ? [folderId] : [] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
+  form.append('file', file);
+
+  try {
+    setUploadProgress(50);
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,name', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form,
+    });
+    setUploadProgress(90);
+    const d = await r.json();
+    setUploadProgress(100);
+    setTimeout(() => showUploadProgress(false), 600);
+
+    if (d.id) {
+      // Make file viewable by link
+      await fetch(`https://www.googleapis.com/drive/v3/files/${d.id}/permissions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' })
+      });
+      return { driveId: d.id, driveUrl: d.webViewLink || `https://drive.google.com/file/d/${d.id}/view`, name: file.name };
+    }
+  } catch(e) {
+    showUploadProgress(false);
+    throw e;
+  }
+}
+
+// ============================================================
+// DRIVE DATA SYNC（メインデータの読み書き）
+// ============================================================
+
+// DriveからJSONデータを読み込む
+async function loadFromDrive() {
+  if (!accessToken) return;
+  showSyncStatus('loading');
+  try {
+    // ① キャッシュされたファイルIDで直接取得を試みる
+    if (DRIVE_DATA_FILE_ID) {
+      const r = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${DRIVE_DATA_FILE_ID}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data)) {
+          DB = data;
+          saveLocal();
+          selectedId = DB[0]?.id || null;
+          activeTab = 'overview';
+          render();
+          showSyncStatus('ok');
+          showNotif('Driveからデータを読み込みました');
+          return;
+        }
+      }
+      // IDが無効になっていたらリセット
+      DRIVE_DATA_FILE_ID = '';
+      localStorage.removeItem('reno_data_file_id');
+    }
+
+    // ② フォルダ内でファイルを検索
+    const folderId = await ensureDriveFolder();
+    const q = `name='${DATA_FILE_NAME}' and '${folderId}' in parents and trashed=false`;
+    const search = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const sd = await search.json();
+    if (sd.files && sd.files.length > 0) {
+      DRIVE_DATA_FILE_ID = sd.files[0].id;
+      localStorage.setItem('reno_data_file_id', DRIVE_DATA_FILE_ID);
+      const r2 = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${DRIVE_DATA_FILE_ID}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (r2.ok) {
+        const data = await r2.json();
+        if (Array.isArray(data)) {
+          DB = data;
+          saveLocal();
+          selectedId = DB[0]?.id || null;
+          activeTab = 'overview';
+          render();
+          showSyncStatus('ok');
+          showNotif('Driveからデータを読み込みました');
+          return;
+        }
+      }
+    }
+    // ③ ファイルが存在しない → ローカルデータをDriveに初回保存
+    await saveToDrive();
+    showSyncStatus('ok');
+    showNotif('Driveにデータを初回保存しました');
+  } catch(e) {
+    console.warn('loadFromDrive error', e);
+    showSyncStatus('error');
+  }
+}
+
+// DriveにJSONデータを保存（新規 or 上書き）
+async function saveToDrive() {
+  if (!accessToken || isSyncing) return;
+  isSyncing = true;
+  showSyncStatus('saving');
+  try {
+    const folderId = await ensureDriveFolder();
+    const body = JSON.stringify(DB);
+    const blob = new Blob([body], { type: 'application/json' });
+
+    if (DRIVE_DATA_FILE_ID) {
+      // 上書き更新
+      await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_DATA_FILE_ID}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: blob,
+        }
+      );
+    } else {
+      // 新規作成
+      const metadata = { name: DATA_FILE_NAME, parents: folderId ? [folderId] : [] };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+      const r = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: form,
+        }
+      );
+      const d = await r.json();
+      if (d.id) {
+        DRIVE_DATA_FILE_ID = d.id;
+        localStorage.setItem('reno_data_file_id', DRIVE_DATA_FILE_ID);
+      }
+    }
+    showSyncStatus('ok');
+  } catch(e) {
+    console.warn('saveToDrive error', e);
+    showSyncStatus('error');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// 同期ステータスをトップバーに表示
+function showSyncStatus(state) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const map = {
+    loading: { text: '⟳ 読込中…', color: 'var(--text3)' },
+    saving:  { text: '⟳ 保存中…', color: 'var(--amber)' },
+    ok:      { text: '✓ Drive同期済', color: 'var(--accent)' },
+    error:   { text: '✗ 同期エラー', color: 'var(--red)' },
+  };
+  const s = map[state] || map.ok;
+  el.textContent = s.text;
+  el.style.color = s.color;
+}
+
+function showUploadProgress(show) {
+  if (!show) setUploadProgress(0);
+}
+function setUploadProgress(pct) {
+  document.getElementById('upload-fill').style.width = pct + '%';
+  document.getElementById('upload-status').textContent = pct < 100 ? `アップロード中... ${pct}%` : '完了！';
+}
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function handleDragLeave(e) { document.getElementById('upload-zone').classList.remove('drag'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) processFile(f); }
+
+async function processFile(file) {
+  if (!file.type.includes('pdf') && !file.name.endsWith('.pdf')) {
+    showNotif('PDFファイルのみアップロードできます'); return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    showNotif('ファイルサイズは20MB以下にしてください'); return;
+  }
+
+  const p = getProp();
+  const proc = p.processes.find(x => x.id === filesProcId);
+  if (!proc) return;
+
+  const fileType = document.getElementById('file-type-select').value;
+  const sizeStr = file.size > 1024*1024 ? (file.size/1024/1024).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB';
+  const now = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/');
+  const autoName = generateFileName(p.name, proc.contractor, proc.name, proc.budget, fileType);
+
+  try {
+    const result = await uploadToDrive(file, p.name, proc.name, proc.contractor, proc.budget, fileType);
+    const fileEntry = {
+      id: 'f_' + Date.now(),
+      name: autoName,
+      type: fileType,
+      driveId: result.driveId,
+      driveUrl: result.driveUrl,
+      size: sizeStr,
+      uploadedAt: now,
+      uploadedBy: '担当者',
+    };
+    proc.files.push(fileEntry);
+    saveLocal();
+    renderFileList(proc);
+    showNotif('Googleドライブにアップロードしました');
+    document.getElementById('file-input').value = '';
+  } catch(e) {
+    showNotif('アップロードに失敗しました。ログイン状態を確認してください。');
+  }
+}
+
+function addManualLink() {
+  const url  = document.getElementById('manual-link').value.trim();
+  if (!url) { showNotif('リンクを入力してください'); return; }
+
+  const p = getProp();
+  const proc = p.processes.find(x => x.id === filesProcId);
+  if (!proc) return;
+
+  const fileType = document.getElementById('file-type-select').value;
+  const now = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/');
+  const autoName = generateFileName(p.name, proc.contractor, proc.name, proc.budget, fileType);
+  proc.files.push({
+    id: 'f_' + Date.now(), name: autoName, type: fileType,
+    driveId: '', driveUrl: url, size: '—',
+    uploadedAt: now, uploadedBy: '担当者',
+  });
+  saveLocal();
+  renderFileList(proc);
+  document.getElementById('manual-link').value = '';
+  showNotif('リンクを登録しました');
+}
+
+function deleteFile(procId, fileId) {
+  const p = getProp();
+  const proc = p.processes.find(x => x.id === procId);
+  if (!proc) return;
+  proc.files = proc.files.filter(f => f.id !== fileId);
+  saveLocal();
+  renderFileList(proc);
+  showNotif('削除しました');
+}
+
+function renderFileList(proc) {
+  const container = document.getElementById('file-list-container');
+  if (!proc.files || !proc.files.length) {
+    container.innerHTML = `<div style="color:var(--text3);font-size:12px;margin-bottom:12px;padding:10px;text-align:center;background:var(--bg);border-radius:var(--radius)">添付ファイルはありません</div>`;
+    return;
+  }
+  let h = `<div class="file-section-title">添付済みファイル（${proc.files.length}件）</div><div class="file-list">`;
+  proc.files.forEach(f => {
+    h += `<div class="file-item">
+      <span class="file-icon">📄</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-tag ${fileTagCls(f.type)}">${fileTagLbl(f.type)}</span>
+      <span class="file-meta">${f.size} · ${f.uploadedAt}</span>
+      <div class="file-actions">
+        ${f.driveUrl ? `<a href="${f.driveUrl}" target="_blank"><button class="btn btn-sm" title="開く">開く</button></a>` : ''}
+        <button class="btn btn-sm" style="color:var(--red)" onclick="deleteFile(${proc.id},'${f.id}')" title="削除">削除</button>
+      </div>
+    </div>`;
+  });
+  h += `</div>`;
+  container.innerHTML = h;
+}
+
+function openFilesModal(procId) {
+  filesProcId = procId;
+  const p = getProp();
+  const proc = p.processes.find(x => x.id === procId);
+  if (!proc) return;
+
+  document.getElementById('files-modal-title').textContent = `📄 書類管理 — ${proc.name}`;
+  document.getElementById('files-modal-sub').textContent = `担当：${proc.contractor}`;
+
+  renderFileList(proc);
+
+  // Show appropriate upload UI
+  if (accessToken) {
+    document.getElementById('upload-auth').style.display = '';
+    document.getElementById('upload-no-auth').style.display = 'none';
+  } else {
+    document.getElementById('upload-auth').style.display = 'none';
+    document.getElementById('upload-no-auth').style.display = '';
+  }
+
+  document.getElementById('modal-files').style.display = 'flex';
+}
+
+// ============================================================
+// GOOGLE SETUP
+// ============================================================
+function showGSetup() {
+  document.getElementById('client-id-input').value = CLIENT_ID;
+  document.getElementById('folder-name-input').value = FOLDER_NAME;
+  document.getElementById('modal-gsetup').style.display = 'flex';
+}
+function saveGSetup() {
+  const cid = document.getElementById('client-id-input').value.trim();
+  const fn  = document.getElementById('folder-name-input').value.trim() || 'リノベ工程管理_書類';
+  if (!cid) { showNotif('クライアントIDを入力してください'); return; }
+  CLIENT_ID   = cid;
+  FOLDER_NAME = fn;
+  DRIVE_FOLDER_ID = '';
+  localStorage.setItem('reno_client_id', cid);
+  localStorage.setItem('reno_folder_name', fn);
+  localStorage.removeItem('reno_folder_id');
+  closeModal('modal-gsetup');
+  initGoogleAuth();
+  if (tokenClient) {
+    tokenClient.requestAccessToken();
+  } else {
+    showNotif('ページをリロードしてからログインしてください');
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() { renderSidebar(); if (selectedId) renderMain(); }
+
+function renderSidebar() {
+  const active = DB.filter(p=>p.status!=='done');
+  const done   = DB.filter(p=>p.status==='done');
+  let h = '';
+  if (active.length) {
+    h += '<div class="sb-section">進行中</div>';
+    active.forEach(p => {
+      const prog = calcProg(p), days = calcDays(p.endDate);
+      h += `<div class="sb-item${selectedId===p.id?' active':''}" onclick="selectProp(${p.id})">
+        <span class="sb-item-dot ${dotCls(p)}"></span>
+        <div class="sb-item-info">
+          <div class="sb-item-name">${p.name}</div>
+          <div class="sb-item-meta">進捗 ${prog}% · ${days>0?'残'+days+'日':'期限超過'}</div>
+        </div>
+      </div>`;
+    });
+  }
+  if (done.length) {
+    h += '<div class="sb-section" style="margin-top:6px">完了</div>';
+    done.forEach(p => {
+      h += `<div class="sb-item${selectedId===p.id?' active':''}" onclick="selectProp(${p.id})">
+        <span class="sb-item-dot dot-gray"></span>
+        <div class="sb-item-info"><div class="sb-item-name">${p.name}</div><div class="sb-item-meta">完了済み</div></div>
+      </div>`;
+    });
+  }
+  document.getElementById('prop-list').innerHTML = h;
+  document.getElementById('total-count').textContent = DB.length + ' 件';
+}
+
+function renderMain() {
+  const p = getProp(); if (!p) return;
+  // setup-bannerを非表示にする（物件選択後は不要）
+  const banner = document.querySelector('.setup-banner');
+  if (banner) banner.style.display = 'none';
+  document.getElementById('tb-title').textContent = p.name;
+  document.getElementById('tb-sub').textContent = `工期：${fmtDate(p.startDate)} 〜 ${fmtDate(p.endDate)}`;
+
+  const prog = calcProg(p), days = calcDays(p.endDate);
+  const bUsed = calcBudget(p), aUsed = calcActual(p);
+  const usedPct = bUsed ? Math.round(aUsed/bUsed*100) : 0;
+  const doneCnt = p.processes.filter(x=>x.status==='done').length;
+  const issCnt  = p.processes.filter(x=>x.status==='issue').length;
+  // Count total files
+  const fileCnt = p.processes.reduce((s,x)=>s+(x.files||[]).length,0);
+
+  let h = `<div class="tabs">
+    <div class="tab${activeTab==='overview'?' active':''}" onclick="switchTab('overview')">概要</div>
+    <div class="tab${activeTab==='process'?' active':''}" onclick="switchTab('process')">工程管理 ${fileCnt?`<span style="background:var(--accent-lt);color:var(--accent);font-size:10px;padding:1px 5px;border-radius:8px;margin-left:3px">${fileCnt}</span>`:''}</div>
+    <div class="tab${activeTab==='gantt'?' active':''}" onclick="switchTab('gantt')">ガントチャート</div>
+    <div class="tab${activeTab==='budget'?' active':''}" onclick="switchTab('budget')">予算管理</div>
+    <div class="tab${activeTab==='memo'?' active':''}" onclick="switchTab('memo')">メモ・報告</div>
+    <div class="tab${activeTab==='items'?' active':''}" onclick="switchTab('items')">📦 物品管理</div>
+  </div>`;
+
+  if (activeTab==='overview') h += renderOverview(p,prog,days,bUsed,aUsed,usedPct,doneCnt,issCnt);
+  if (activeTab==='process')  h += renderProcess(p);
+  if (activeTab==='gantt')    h += renderGantt(p);
+  if (activeTab==='budget')   h += renderBudget(p,bUsed,aUsed);
+  if (activeTab==='memo')     h += renderMemo(p);
+  if (activeTab==='items')    h += renderItems(p);
+
+  document.getElementById('main-content').innerHTML = h;
+}
+
+function renderOverview(p,prog,days,bUsed,aUsed,usedPct,doneCnt,issCnt) {
+  let h = `<div class="metrics">
+    <div class="metric">
+      <div class="metric-lbl">全体進捗</div>
+      <div class="metric-val">${prog}<span style="font-size:14px;font-weight:400">%</span></div>
+      <div class="pbar"><div class="pbar-fill" style="width:${prog}%;background:var(--accent)"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">残り日数</div>
+      <div class="metric-val">${Math.max(0,days)}<span style="font-size:14px;font-weight:400">日</span></div>
+      <div class="metric-sub">完了予定 ${fmtDate(p.endDate)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">予算消化率</div>
+      <div class="metric-val">${usedPct}<span style="font-size:14px;font-weight:400">%</span></div>
+      <div class="metric-sub">${fmtYen(aUsed)} / ${fmtYen(bUsed)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">工程完了</div>
+      <div class="metric-val">${doneCnt}<span style="font-size:14px;font-weight:400">/${p.processes.length}</span></div>
+      <div class="metric-sub" style="color:${issCnt?'var(--red)':'var(--text3)'}">${issCnt?issCnt+'件 遅延中':'遅延なし'}</div>
+    </div>
+  </div>
+  <div class="card"><div class="card-title" style="margin-bottom:14px">工程別進捗</div>`;
+  p.processes.forEach(proc => {
+    const fc = (proc.files||[]).length;
+    h += `<div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--text2)">${proc.name}</span>
+          ${fc?`<span style="font-size:10px;color:var(--blue);background:var(--blue-lt);padding:1px 5px;border-radius:8px">📄${fc}</span>`:''}
+        </div>
+        <span class="pill ${pillCls(proc.status)}">${statusLbl(proc.status)}</span>
+      </div>
+      <div class="bar-row">
+        <div class="bar-bg"><div class="bar-fg" style="width:${proc.progress}%;background:${barColor(proc.status)}"></div></div>
+        <div class="bar-lbl">${proc.progress}%</div>
+      </div>
+    </div>`;
+  });
+  h += `</div>`;
+  if (p.memos.length) {
+    h += `<div class="card"><div class="card-title" style="margin-bottom:10px">最新メモ</div>`;
+    p.memos.slice(0,2).forEach(m => {
+      h += `<div class="memo-item${m.type==='issue'?' issue':''}">
+        <div class="memo-meta"><span>${m.date}</span><span>${m.author}</span>${m.type==='issue'?'<span class="pill pill-issue">問題</span>':''}</div>
+        <div class="memo-text">${m.text}</div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  return h;
+}
+
+function renderProcess(p) {
+  let h = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn btn-accent btn-sm" onclick="openAddProc()">＋ 工程を追加</button>
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr>
+      <th>#</th><th>工程名</th><th>担当業者</th><th>開始</th><th>完了予定</th><th>ステータス</th><th>進捗</th><th>書類</th><th>操作</th>
+    </tr></thead><tbody>`;
+  p.processes.forEach(proc => {
+    const fc = (proc.files||[]).length;
+    const hasQuote   = proc.files?.some(f=>f.type==='quote');
+    const hasInvoice = proc.files?.some(f=>f.type==='invoice');
+    h += `<tr>
+      <td style="color:var(--text3);font-family:'DM Mono',monospace">${proc.id}</td>
+      <td style="font-weight:500">${proc.name}</td>
+      <td style="color:var(--text2)">${proc.contractor}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${fmtDate(proc.start)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${fmtDate(proc.end)}</td>
+      <td><span class="pill ${pillCls(proc.status)}">${statusLbl(proc.status)}</span></td>
+      <td style="min-width:110px">
+        <div class="bar-row">
+          <div class="bar-bg"><div class="bar-fg" style="width:${proc.progress}%;background:${barColor(proc.status)}"></div></div>
+          <div class="bar-lbl">${proc.progress}%</div>
+        </div>
+      </td>
+      <td style="min-width:110px">
+        <div style="display:flex;align-items:center;gap:4px">
+          ${hasQuote?'<span class="file-tag file-tag-quote">見積</span>':''}
+          ${hasInvoice?'<span class="file-tag file-tag-invoice">請求</span>':''}
+          <button class="btn btn-sm" onclick="openFilesModal(${proc.id})" style="font-size:11px">
+            📄 ${fc ? fc+'件' : '追加'}
+          </button>
+        </div>
+      </td>
+      <td><button class="btn btn-sm" onclick="openEditProc(${proc.id})">編集</button></td>
+    </tr>`;
+  });
+  h += `</tbody></table></div>`;
+
+  // Files summary card
+  const allFiles = p.processes.flatMap(proc => (proc.files||[]).map(f => ({...f, procName: proc.name})));
+  if (allFiles.length) {
+    h += `<div class="card"><div class="card-hdr"><div class="card-title">添付書類一覧（全工程）</div><span style="font-size:11px;color:var(--text3)">${allFiles.length}件</span></div>
+    <div class="file-list">`;
+    allFiles.forEach(f => {
+      h += `<div class="file-item">
+        <span class="file-icon">📄</span>
+        <div style="flex:1;min-width:0">
+          <div class="file-name">${f.name}</div>
+          <div style="font-size:10px;color:var(--text3)">${f.procName} · ${f.uploadedAt} · ${f.uploadedBy}</div>
+        </div>
+        <span class="file-tag ${fileTagCls(f.type)}">${fileTagLbl(f.type)}</span>
+        <span class="file-meta">${f.size}</span>
+        ${f.driveUrl?`<a href="${f.driveUrl}" target="_blank"><button class="btn btn-sm">開く</button></a>`:''}
+      </div>`;
+    });
+    h += `</div></div>`;
+  }
+  return h;
+}
+
+function renderGantt(p) {
+  if (!p.processes.length) return `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">工程を追加するとガントチャートが表示されます</div></div>`;
+  const starts = p.processes.map(x=>new Date(x.start)).filter(Boolean);
+  const ends   = p.processes.map(x=>new Date(x.end)).filter(Boolean);
+  if (!starts.length) return '';
+  const minDate = new Date(Math.min(...starts));
+  const maxDate = new Date(Math.max(...ends));
+  minDate.setDate(minDate.getDate()-1);
+  maxDate.setDate(maxDate.getDate()+2);
+  const dates=[];let cur=new Date(minDate);
+  while(cur<=maxDate){dates.push(new Date(cur));cur.setDate(cur.getDate()+1);}
+  const today=new Date();today.setHours(0,0,0,0);
+  let monthCols={};
+  dates.forEach((d,i)=>{
+    const k=`${d.getFullYear()}-${d.getMonth()}`;
+    if(!monthCols[k]){monthCols[k]={start:i,count:0,label:`${d.getMonth()+1}月`};}
+    monthCols[k].count++;
+  });
+  let h=`<div class="gantt-wrap"><table class="gantt-table"><thead><tr>
+    <th class="gantt-fix-th" colspan="3">工程</th>`;
+  Object.values(monthCols).forEach(m=>{h+=`<th class="gantt-month-th" colspan="${m.count}">${m.label}</th>`;});
+  h+=`</tr><tr>
+    <th class="gantt-fix-th" style="min-width:26px">#</th>
+    <th class="gantt-fix-th" style="min-width:130px;left:26px">工程名</th>
+    <th class="gantt-fix-th" style="min-width:80px;left:156px">担当</th>`;
+  dates.forEach(d=>{
+    const iw=d.getDay()===0||d.getDay()===6,it=d.getTime()===today.getTime(),im=d.getDate()===1;
+    h+=`<th class="gantt-day-th${iw?' weekend':''}${im?' month-start':''}${it?' today-col':''}">${d.getDate()}</th>`;
+  });
+  h+=`</tr></thead><tbody>`;
+  p.processes.forEach((proc,ti)=>{
+    const ts=new Date(proc.start);ts.setHours(0,0,0,0);
+    const te=new Date(proc.end);te.setHours(0,0,0,0);
+    const bc=barColor(proc.status);
+    const td=Math.max(1,(te-ts)/86400000+1);
+    const pd=td*proc.progress/100;
+    h+=`<tr class="gantt-row">
+      <td class="gantt-fix-td" style="min-width:26px;text-align:center;color:var(--text3);font-size:11px">${ti+1}</td>
+      <td class="gantt-fix-td name-cell" style="left:26px;min-width:130px">${proc.name}</td>
+      <td class="gantt-fix-td" style="left:156px;min-width:80px;color:var(--text2);font-size:11px">${proc.contractor}</td>`;
+    dates.forEach(d=>{
+      d.setHours(0,0,0,0);
+      const iw=d.getDay()===0||d.getDay()===6,it=d.getTime()===today.getTime(),im=d.getDate()===1;
+      const inT=d>=ts&&d<=te,off=(d-ts)/86400000,filled=inT&&off<pd,light=inT&&off>=pd;
+      let cc='gantt-cell'+(iw?' weekend':'')+(im?' month-start':'')+(it?' today-col':'');
+      if(inT){h+=`<td class="${cc}"><div class="gantt-bar" style="background:${bc};${light?'opacity:.28':''}"></div></td>`;}
+      else{h+=`<td class="${cc}"></td>`;}
+    });
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div style="display:flex;gap:14px;flex-wrap:wrap;padding:6px 2px;font-size:11px;color:var(--text2)">
+    <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#2D9B5A;margin-right:4px"></span>完了</span>
+    <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#1A6EB5;margin-right:4px"></span>進行中</span>
+    <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#D94040;margin-right:4px"></span>遅延</span>
+    <span><span style="display:inline-block;width:12px;height:10px;border-radius:2px;background:#B0AB9F;margin-right:4px"></span>待機中</span>
+    <span style="color:var(--red);font-weight:500">│ 今日</span>
+  </div>`;
+  return h;
+}
+
+function renderBudget(p,bUsed,aUsed) {
+  const rem=bUsed-aUsed,pct=bUsed?Math.round(aUsed/bUsed*100):0;
+  const barBg=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--accent)';
+  let h=`<div class="metrics" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="metric"><div class="metric-lbl">計画総額</div><div class="metric-val" style="font-size:18px">${fmtYen(bUsed)}</div></div>
+    <div class="metric"><div class="metric-lbl">実績額</div><div class="metric-val" style="font-size:18px;color:var(--blue)">${fmtYen(aUsed)}</div></div>
+    <div class="metric"><div class="metric-lbl">残差</div><div class="metric-val" style="font-size:18px;color:${rem>=0?'var(--accent)':'var(--red)'}">${fmtYen(rem)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:8px">予算消化率 ${pct}%</div>
+    <div class="pbar" style="height:8px;margin-bottom:6px"><div class="pbar-fill" style="width:${pct}%;background:${barBg}"></div></div>
+    <div style="font-size:11px;color:var(--text3)">${fmtYen(aUsed)} / ${fmtYen(bUsed)}</div>
+  </div>
+  <div class="card"><div class="card-hdr"><div class="card-title">費目別内訳</div></div>`;
+  p.processes.forEach(proc=>{
+    const diff=(proc.actual||0)-proc.budget;
+    const ds=proc.actual?(diff>=0?`<span style="color:var(--red)">+${fmtYen(diff)}</span>`:`<span style="color:var(--accent)">${fmtYen(diff)}</span>`):'<span style="color:var(--text3)">未入力</span>';
+    const fc=(proc.files||[]).length;
+    h+=`<div class="budget-row">
+      <div>
+        <div style="font-size:12px;font-weight:500">${proc.name} ${fc?`<span style="font-size:10px;color:var(--blue);background:var(--blue-lt);padding:1px 5px;border-radius:8px">📄${fc}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--text3)">${proc.contractor}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="budget-amt">${fmtYen(proc.budget)}</div>
+        <div style="font-size:11px;margin-top:1px">${ds}</div>
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderMemo(p) {
+  let h=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn btn-accent btn-sm" onclick="openAddMemo()">＋ メモを追加</button>
+  </div>`;
+  if(!p.memos.length){h+=`<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">メモはまだありません</div></div>`;}
+  else p.memos.forEach(m=>{
+    h+=`<div class="memo-item${m.type==='issue'?' issue':''}">
+      <div class="memo-meta"><span>${m.date}</span><span>—</span><span>${m.author}</span>${m.type==='issue'?'<span class="pill pill-issue">問題</span>':''}</div>
+      <div class="memo-text">${m.text}</div>
+    </div>`;
+  });
+  return h;
+}
+
+
+function renderItems(p) {
+  if (!p.items) p.items = [];
+
+  const CATS = ['家具','家電','照明','カーテン・ラグ','収納','キッチン用品','バス・トイレ','その他'];
+
+  // Totals
+  const totalSmall  = p.items.reduce((s,x) => s+(x.unitPrice*x.qty+x.shipping), 0);
+  const totalActual = p.items.reduce((s,x) => s+(x.actual||0), 0);
+  const enteredCnt  = p.items.filter(x=>x.actual>0).length;
+  const enteredSmall= p.items.filter(x=>x.actual>0).reduce((s,x)=>s+(x.unitPrice*x.qty+x.shipping),0);
+  const totalDiff   = enteredCnt ? totalActual - enteredSmall : null;
+
+  const mono  = "font-family:'DM Mono',monospace";
+  const thSt  = "padding:8px 8px;font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em;background:var(--bg)";
+  const tdSt  = "border-bottom:1px solid var(--border);border-right:1px solid var(--border)";
+  const inSt  = "border:none;background:transparent;outline:none;font-family:inherit;font-size:12px;color:var(--text);padding:7px 8px";
+
+  let h = `<div class="metrics" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px">
+    <div class="metric"><div class="metric-lbl">見積小計合計</div><div class="metric-val" style="font-size:17px">${fmtYen(totalSmall)}</div><div class="metric-sub">${p.items.length}品目</div></div>
+    <div class="metric"><div class="metric-lbl">実績合計</div><div class="metric-val" style="font-size:17px;color:var(--blue)">${totalActual?fmtYen(totalActual):'—'}</div><div class="metric-sub">${enteredCnt}品目 入力済み</div></div>
+    <div class="metric"><div class="metric-lbl">差額（入力分）</div>
+      <div class="metric-val" style="font-size:17px;color:${totalDiff===null?'var(--text3)':totalDiff>0?'var(--red)':'var(--accent)'}">
+        ${totalDiff===null?'—':((totalDiff>0?'+':'')+fmtYen(totalDiff))}
+      </div>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:13px">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1100px">
+    <thead><tr style="background:var(--bg)">
+      <th style="${thSt};text-align:left;min-width:160px;padding-left:12px">品目</th>
+      <th style="${thSt};text-align:left;min-width:90px">カテゴリー</th>
+      <th style="${thSt};text-align:right;min-width:90px">単価（円）</th>
+      <th style="${thSt};text-align:right;min-width:80px">送料その他</th>
+      <th style="${thSt};text-align:center;min-width:54px">数量</th>
+      <th style="${thSt};text-align:right;min-width:90px;background:var(--accent-lt);color:var(--accent)">小計</th>
+      <th style="${thSt};text-align:left;min-width:140px">色/サイズ/注意事項</th>
+      <th style="${thSt};text-align:left;min-width:60px">URL</th>
+      <th style="${thSt};text-align:left;min-width:120px">備考</th>
+      <th style="${thSt};text-align:right;min-width:90px;background:var(--blue-lt);color:var(--blue)">実績（円）</th>
+      <th style="${thSt};text-align:right;min-width:80px;border-right:none">差額</th>
+      <th style="padding:8px 6px;background:var(--bg);border-bottom:1px solid var(--border);width:30px"></th>
+    </tr></thead>
+    <tbody>`;
+
+  p.items.forEach((item, idx) => {
+    const subtotal = item.unitPrice * item.qty + item.shipping;
+    const hasA     = (item.actual||0) > 0;
+    const d        = hasA ? item.actual - subtotal : null;
+    const dColor   = d===null?'var(--text3)':d>0?'var(--red)':'var(--accent)';
+    const dStr     = d===null?'—':((d>0?'+':'')+fmtYen(d));
+    const rowBg    = idx%2===0?'var(--card)':'var(--bg)';
+
+    const catOpts  = CATS.map(c=>`<option value="${c}"${item.category===c?' selected':''}>${c}</option>`).join('');
+
+    h += `<tr style="background:${rowBg}">
+      <td style="padding:0;${tdSt}">
+        <input style="${inSt};width:100%;font-weight:500;padding-left:12px" value="${(item.name||'').replace(/"/g,'&quot;')}"
+          onchange="iu(${item.id},'name',this.value)" placeholder="品目名">
+      </td>
+      <td style="padding:0;${tdSt}">
+        <select style="${inSt};width:100%;cursor:pointer" onchange="iu(${item.id},'category',this.value)">
+          ${catOpts}
+        </select>
+      </td>
+      <td style="padding:0;${tdSt}">
+        <input type="number" style="${inSt};text-align:right;width:100%;${mono}" value="${item.unitPrice||''}" placeholder="0"
+          onchange="iu(${item.id},'unitPrice',this.value)">
+      </td>
+      <td style="padding:0;${tdSt}">
+        <input type="number" style="${inSt};text-align:right;width:100%;${mono}" value="${item.shipping||''}" placeholder="0"
+          onchange="iu(${item.id},'shipping',this.value)">
+      </td>
+      <td style="padding:0;${tdSt}">
+        <input type="number" min="1" style="${inSt};text-align:center;width:100%;${mono}" value="${item.qty||1}"
+          onchange="iu(${item.id},'qty',this.value)">
+      </td>
+      <td style="padding:8px 10px;${tdSt};text-align:right;${mono};font-weight:600;color:var(--accent);background:var(--accent-lt);white-space:nowrap" id="sub-${item.id}">${fmtYen(subtotal)}</td>
+      <td style="padding:0;${tdSt}">
+        <input style="${inSt};width:100%" value="${(item.spec||'').replace(/"/g,'&quot;')}" placeholder="色・サイズ等"
+          onchange="iu(${item.id},'spec',this.value)">
+      </td>
+      <td style="padding:0;${tdSt};text-align:center">
+        ${item.url ? `<a href="${item.url}" target="_blank" title="${item.url}" style="font-size:11px;color:var(--blue)">開く</a>` : ''}
+        <input style="${inSt};width:100%;font-size:11px;color:var(--blue)" value="${(item.url||'').replace(/"/g,'&quot;')}" placeholder="https://..."
+          onchange="iu(${item.id},'url',this.value)">
+      </td>
+      <td style="padding:0;${tdSt}">
+        <input style="${inSt};width:100%" value="${(item.note||'').replace(/"/g,'&quot;')}" placeholder="備考"
+          onchange="iu(${item.id},'note',this.value)">
+      </td>
+      <td style="padding:0;${tdSt};background:var(--blue-lt)">
+        <input type="number" style="${inSt};text-align:right;width:100%;${mono};color:var(--blue);background:transparent" value="${item.actual||''}" placeholder="未入力"
+          onchange="iu(${item.id},'actual',this.value)">
+      </td>
+      <td style="padding:8px 10px;text-align:right;${mono};font-weight:600;color:${dColor};border-bottom:1px solid var(--border);white-space:nowrap" id="diff-${item.id}">${dStr}</td>
+      <td style="padding:4px 5px;border-bottom:1px solid var(--border);text-align:center">
+        <button onclick="deleteItem(${item.id})" style="background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:1px 5px;border-radius:4px">×</button>
+      </td>
+    </tr>`;
+  });
+
+  // New row (always visible)
+  const newCatOpts = CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  h += `<tr style="background:var(--amber-lt)">
+    <td style="padding:0;${tdSt}">
+      <input id="ni-name" style="${inSt};width:100%;font-weight:500;padding-left:12px" placeholder="＋ 品目名を入力..."
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="padding:0;${tdSt}">
+      <select id="ni-cat" style="${inSt};width:100%;cursor:pointer">${newCatOpts}</select>
+    </td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-price" type="number" style="${inSt};text-align:right;width:100%;${mono}" placeholder="0"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-ship" type="number" style="${inSt};text-align:right;width:100%;${mono}" placeholder="0"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-qty" type="number" min="1" value="1" style="${inSt};text-align:center;width:100%;${mono}"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="background:var(--accent-lt);${tdSt}"></td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-spec" style="${inSt};width:100%" placeholder="色・サイズ等"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-url" style="${inSt};width:100%;font-size:11px" placeholder="https://..."
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="padding:0;${tdSt}">
+      <input id="ni-note" style="${inSt};width:100%" placeholder="備考"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="background:var(--blue-lt);${tdSt}">
+      <input id="ni-actual" type="number" style="${inSt};text-align:right;width:100%;${mono};color:var(--blue);background:transparent" placeholder="未入力"
+        onkeydown="if(event.key==='Enter')addItemInline()">
+    </td>
+    <td style="border-bottom:1px solid var(--border)"></td>
+    <td style="padding:4px 5px;border-bottom:1px solid var(--border);text-align:center">
+      <button onclick="addItemInline()"
+        style="background:var(--accent);border:none;color:#fff;font-size:11px;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:6px;white-space:nowrap">追加</button>
+    </td>
+  </tr>
+  <tr style="background:var(--bg2)">
+    <td colspan="5" style="padding:9px 12px;font-size:12px;font-weight:600">合計（${p.items.length}品目）</td>
+    <td style="padding:9px 10px;text-align:right;${mono};font-weight:700;color:var(--accent);background:var(--accent-lt);border-right:1px solid var(--border)">${fmtYen(totalSmall)}</td>
+    <td colspan="3"></td>
+    <td style="padding:9px 10px;text-align:right;${mono};font-weight:700;color:var(--blue);background:var(--blue-lt);border-right:1px solid var(--border)">${enteredCnt?fmtYen(totalActual):'—'}</td>
+    <td style="padding:9px 10px;text-align:right;${mono};font-weight:700;color:${totalDiff===null?'var(--text3)':totalDiff>0?'var(--red)':'var(--accent)'}">
+      ${totalDiff===null?'—':((totalDiff>0?'+':'')+fmtYen(totalDiff))}
+    </td>
+    <td></td>
+  </tr>
+  </tbody></table></div>`;
+  return h;
+}
+
+function iu(id, field, value) {
+  const p = getProp();
+  const item = p.items.find(x => x.id === id);
+  if (!item) return;
+  const numFields = ['unitPrice','shipping','qty','actual'];
+  item[field] = numFields.includes(field)
+    ? Math.max(field==='qty'?1:0, parseInt(value)||0)
+    : value;
+  saveLocal();
+  // Update subtotal and diff cells
+  const sub  = item.unitPrice * item.qty + item.shipping;
+  const hasA = (item.actual||0) > 0;
+  const d    = hasA ? item.actual - sub : null;
+  const dColor = d===null?'var(--text3)':d>0?'var(--red)':'var(--accent)';
+  const getEl = elId => document.getElementById(elId);
+  if (getEl('sub-'+item.id))  getEl('sub-'+item.id).textContent  = fmtYen(sub);
+  if (getEl('diff-'+item.id)) { getEl('diff-'+item.id).style.color = dColor; getEl('diff-'+item.id).textContent = d===null?'—':((d>0?'+':'')+fmtYen(d)); }
+}
+
+function addItemInline() {
+  const p = getProp();
+  if (!p.items) p.items = [];
+  const name = document.getElementById('ni-name').value.trim();
+  if (!name) { document.getElementById('ni-name').focus(); return; }
+  p.items.push({
+    id:        nextId(p.items),
+    name,
+    category:  document.getElementById('ni-cat').value,
+    unitPrice: parseInt(document.getElementById('ni-price').value)||0,
+    shipping:  parseInt(document.getElementById('ni-ship').value)||0,
+    qty:       Math.max(1, parseInt(document.getElementById('ni-qty').value)||1),
+    spec:      document.getElementById('ni-spec').value,
+    url:       document.getElementById('ni-url').value,
+    note:      document.getElementById('ni-note').value,
+    actual:    parseInt(document.getElementById('ni-actual').value)||0,
+  });
+  saveLocal();
+  renderMain();
+  showNotif('物品を追加しました');
+  setTimeout(() => { const el = document.getElementById('ni-name'); if(el) el.focus(); }, 50);
+}
+
+function deleteItem(id) {
+  const p = getProp();
+  p.items = p.items.filter(x => x.id !== id);
+  saveLocal();
+  renderMain();
+  showNotif('削除しました');
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function selectProp(id){ selectedId=id; activeTab='overview'; render(); }
+function switchTab(tab){ activeTab=tab; renderMain(); }
+function useLocalMode(){ selectedId=DB[0]?.id||null; activeTab='overview'; render(); showNotif('ローカルモードで起動しました'); }
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+
+function openAddProp(){
+  ['f-name','f-addr','f-budget'].forEach(i=>document.getElementById(i).value='');
+  ['f-start','f-end'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('modal-prop').style.display='flex';
+}
+function addProperty(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showNotif('物件名を入力してください');return;}
+  const p={id:nextId(DB),name,
+    addr:document.getElementById('f-addr').value,
+    startDate:document.getElementById('f-start').value,
+    endDate:document.getElementById('f-end').value,
+    budget:parseInt(document.getElementById('f-budget').value)||0,
+    status:'progress',processes:[],memos:[],items:[]};
+  DB.push(p);saveLocal();closeModal('modal-prop');
+  selectedId=p.id;activeTab='overview';render();showNotif('物件を追加しました');
+}
+
+function openAddProc(){
+  editProcId=null;
+  document.getElementById('proc-modal-title').textContent='工程を追加';
+  ['pf-name','pf-cont','pf-budget','pf-actual'].forEach(i=>document.getElementById(i).value='');
+  ['pf-start','pf-end'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('pf-prog').value=0;
+  document.getElementById('pf-status').value='waiting';
+  document.getElementById('modal-proc').style.display='flex';
+}
+function openEditProc(id){
+  const p=getProp(),proc=p.processes.find(x=>x.id===id);if(!proc)return;
+  editProcId=id;
+  document.getElementById('proc-modal-title').textContent='工程を編集';
+  document.getElementById('pf-name').value=proc.name;
+  document.getElementById('pf-cont').value=proc.contractor;
+  document.getElementById('pf-start').value=proc.start;
+  document.getElementById('pf-end').value=proc.end;
+  document.getElementById('pf-prog').value=proc.progress;
+  document.getElementById('pf-status').value=proc.status;
+  document.getElementById('pf-budget').value=proc.budget;
+  document.getElementById('pf-actual').value=proc.actual||'';
+  document.getElementById('modal-proc').style.display='flex';
+}
+function saveProcess(){
+  const p=getProp();
+  const name=document.getElementById('pf-name').value.trim();
+  if(!name){showNotif('工程名を入力してください');return;}
+  const d={name,contractor:document.getElementById('pf-cont').value||'\u2014',
+    start:document.getElementById('pf-start').value,
+    end:document.getElementById('pf-end').value,
+    progress:Math.min(100,Math.max(0,parseInt(document.getElementById('pf-prog').value)||0)),
+    status:document.getElementById('pf-status').value,
+    budget:parseInt(document.getElementById('pf-budget').value)||0,
+    actual:parseInt(document.getElementById('pf-actual').value)||0};
+  if(editProcId){const idx=p.processes.findIndex(x=>x.id===editProcId);p.processes[idx]={...p.processes[idx],...d};}
+  else{p.processes.push({id:nextId(p.processes),files:[],...d});}
+  saveLocal();closeModal('modal-proc');renderMain();
+  showNotif(editProcId?'工程を更新しました':'工程を追加しました');
+}
+
+function openAddMemo(){
+  document.getElementById('mf-type').value='normal';
+  document.getElementById('mf-text').value='';
+  document.getElementById('modal-memo').style.display='flex';
+}
+function addMemo(){
+  const p=getProp();
+  const text=document.getElementById('mf-text').value.trim();
+  if(!text){showNotif('内容を入力してください');return;}
+  const now=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'/');
+  p.memos.unshift({id:nextId(p.memos),date:now,author:'担当者',type:document.getElementById('mf-type').value,text});
+  saveLocal();closeModal('modal-memo');renderMain();showNotif('メモを追加しました');
+}
+
+// Init
+window.addEventListener('load',()=>{
+  initGoogleAuth();
+  // 起動時に最初の物件を自動選択して表示
+  if (DB.length > 0) {
+    selectedId = DB[0].id;
+    activeTab = 'overview';
+  }
+  render();
+});
+</script>
+</body>
+</html>
